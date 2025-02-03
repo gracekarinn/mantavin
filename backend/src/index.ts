@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { JsonRpcProvider } from "ethers";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
 
 dotenv.config();
 
@@ -12,6 +13,13 @@ app.use(cors());
 app.use(express.json());
 
 const provider = new JsonRpcProvider(process.env.RPC_URL);
+
+mongoose
+    .connect(process.env.MONGODB_URI as string)
+    .then(() => {
+        console.log("MongoDB connected");
+    })
+    .catch((error) => console.error("MongoDB connection error:", error));
 
 app.get("/api/test", async (_req: Request, res: Response) => {
     try {
