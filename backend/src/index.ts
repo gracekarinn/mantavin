@@ -22,6 +22,23 @@ app.get("/api/test", async (_req: Request, res: Response) => {
     }
 });
 
+app.get("/api/chain-info", async (_req: Request, res: Response) => {
+    try {
+        const [blockNumber, network] = await Promise.all([
+            provider.getBlockNumber(),
+            provider.getNetwork(),
+        ]);
+
+        res.json({
+            blockNumber: Number(blockNumber),
+            chainId: Number(network.chainId),
+            name: network.name,
+        });
+    } catch (error) {
+        res.status(500).json({ error: (error as Error).message });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
