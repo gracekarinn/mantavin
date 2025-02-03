@@ -3,6 +3,7 @@ import cors from "cors";
 import { JsonRpcProvider } from "ethers";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import applicationRoutes from "./routes/application";
 
 dotenv.config();
 
@@ -20,6 +21,8 @@ mongoose
         console.log("MongoDB connected");
     })
     .catch((error) => console.error("MongoDB connection error:", error));
+
+app.use("/api/applications", applicationRoutes);
 
 app.get("/api/test", async (_req: Request, res: Response) => {
     try {
