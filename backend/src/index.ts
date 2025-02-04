@@ -4,6 +4,7 @@ import { JsonRpcProvider } from "ethers";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import employeeRoutes from "./routes/employee";
+import trainingRoutes from "./routes/training";
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ mongoose
     .catch((error) => console.error("MongoDB connection error:", error));
 
 app.use("/api/employee", employeeRoutes);
+app.use("/api/training", trainingRoutes);
 
 app.get("/api/test", async (_req: Request, res: Response) => {
     try {
