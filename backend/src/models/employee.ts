@@ -6,6 +6,7 @@ interface Training {
     completionDate?: Date;
     deadline?: Date;
     status?: "pending" | "completed" | "overdue";
+    blockchainVerified?: boolean;
 }
 
 interface Milestone {
@@ -14,6 +15,7 @@ interface Milestone {
     timestamp?: Date;
     verified?: boolean;
     verifiedBy?: string;
+    blockchainVerified?: boolean;
 }
 
 export interface IEmployee extends Document {
@@ -24,6 +26,8 @@ export interface IEmployee extends Document {
     role: string;
     joinDate?: Date;
     isActive?: boolean;
+    blockchainVerified?: boolean;
+    profileHash?: string;
     trainings?: Training[];
     milestones?: Milestone[];
 }
@@ -36,24 +40,28 @@ const EmployeeSchema = new mongoose.Schema({
     role: { type: String, required: true },
     joinDate: { type: Date, default: Date.now },
     isActive: { type: Boolean, default: true },
+    blockchainVerified: { type: Boolean, default: false },
+    profileHash: { type: String },
     trainings: [
         {
-            trainingId: String,
+            trainingId: { type: String, required: true },
             name: String,
             completionDate: Date,
             deadline: Date,
             status: { type: String, enum: ["pending", "completed", "overdue"] },
+            blockchainVerified: { type: Boolean, default: false },
         },
     ],
     milestones: [
         {
-            id: String,
+            id: { type: String, required: true },
             description: String,
             timestamp: Date,
             verified: Boolean,
             verifiedBy: String,
+            blockchainVerified: { type: Boolean, default: false },
         },
     ],
 });
 
-export const Employee = mongoose.model("Employee", EmployeeSchema);
+export const Employee = mongoose.model<IEmployee>("Employee", EmployeeSchema);
