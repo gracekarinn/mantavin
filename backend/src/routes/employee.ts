@@ -131,6 +131,15 @@ router.post("/:wallet/assign-training", (req, res) => {
 
 router.patch("/:wallet/complete-training/:trainingId", async (req, res) => {
     try {
+        const training = await Training.findOne({
+            trainingId: req.params.trainingId,
+        });
+        if (!training) throw new Error("Training not found");
+
+        if (training.deadline && training.deadline < new Date()) {
+            throw new Error("Training deadline has passed");
+        }
+
         await contractService.completeTraining(
             req.params.wallet,
             req.params.trainingId
@@ -167,6 +176,21 @@ router.get("/:wallet/trainings", (req, res) => {
             res.json(employee.trainings);
         })
         .catch((error) => res.status(500).json({ error: error.message }));
+});
+
+router.patch("/:wallet/deactivate", async (req, res) => {
+    try {
+        const employee = await Employee.findOneAndUpdate(
+            { wallet: req.params.wallet },
+            { $set: { isActive: false } },
+            { new: true }
+        );
+
+        if (!employee) throw new Error("Employee not found");
+        res.json(employee);
+    } catch (error) {
+        res.status(500).json({ error: (error as Error).message });
+    }
 });
 
 export default router;
