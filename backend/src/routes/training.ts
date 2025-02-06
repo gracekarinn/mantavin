@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import { ethers } from "ethers";
 import { Training, ITraining } from "../models/training";
 import { ContractService } from "../utils/contract";
+import mongoose from "mongoose";
 
 interface TrainingParams {
     id?: string;
@@ -23,7 +24,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
             saved.mandatory
         );
         res.status(201).json(saved);
-        return; // Exit without returning a value.
+        return;
     } catch (error) {
         res.status(400).json({ error: (error as Error).message });
         return;
@@ -89,19 +90,22 @@ router.get(
     }
 );
 
-router.patch(
-    "/:id",
-    async (req: Request<TrainingParams>, res: Response): Promise<void> => {
-        try {
-            const training = (await Training.findByIdAndUpdate(
+router.patch("/:id", async (req: Request<TrainingParams>, res: Response) => {
+    try {
+        if (req.body.department && !Array.isArray(req.body.department)) {
+            req.body.department = [req.body.department];
+        }
+
+        const session = await mongoose.startSession();
+        await session.withTransaction(async () => {
+            const training = await Training.findByIdAndUpdate(
                 req.params.id,
                 req.body,
-                { new: true }
-            )) as ITraining;
+                { new: true, session }
+            );
 
             if (!training) {
-                res.status(404).json({ error: "Training not found" });
-                return;
+                throw new Error("Training not found");
             }
 
             if (req.body.name || req.body.deadline || req.body.mandatory) {
@@ -112,13 +116,14 @@ router.patch(
                     training.mandatory
                 );
             }
+
             res.json(training);
-            return;
-        } catch (error) {
-            res.status(400).json({ error: (error as Error).message });
-            return;
-        }
+        });
+
+        await session.endSession();
+    } catch (error) {
+        res.status(400).json({ error: (error as Error).message });
     }
-);
+});
 
 export default router;
