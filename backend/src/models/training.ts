@@ -15,7 +15,7 @@ export interface ITraining extends Document {
 }
 
 const TrainingSchema = new mongoose.Schema({
-    trainingId: { type: String, required: true, unique: true }, // Add this
+    trainingId: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     description: String,
     mandatory: { type: Boolean, default: false },
