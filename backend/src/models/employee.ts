@@ -1,5 +1,4 @@
 import mongoose, { Document } from "mongoose";
-
 interface Training {
     trainingId: string;
     name: string;
@@ -27,7 +26,6 @@ export interface IEmployee extends Document {
     joinDate?: Date;
     isActive?: boolean;
     blockchainVerified?: boolean;
-    profileHash?: string;
     trainings?: Training[];
     milestones?: Milestone[];
 }
@@ -41,7 +39,6 @@ const EmployeeSchema = new mongoose.Schema({
     joinDate: { type: Date, default: Date.now },
     isActive: { type: Boolean, default: true },
     blockchainVerified: { type: Boolean, default: false },
-    profileHash: { type: String },
     trainings: [
         {
             trainingId: { type: String, required: true },
@@ -54,7 +51,7 @@ const EmployeeSchema = new mongoose.Schema({
     ],
     milestones: [
         {
-            id: { type: String, required: true },
+            id: String,
             description: String,
             timestamp: Date,
             verified: Boolean,

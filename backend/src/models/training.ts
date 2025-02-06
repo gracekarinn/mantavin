@@ -1,13 +1,13 @@
 import mongoose, { Document } from "mongoose";
 
 export interface ITraining extends Document {
-    trainingId: string;
+    _id: mongoose.Types.ObjectId;
     name: string;
     description?: string;
+    trainingId: string;
     mandatory: boolean;
     department: string[];
     deadline: Date;
-    blockchainVerified?: boolean;
     materials?: Array<{
         title: string;
         url: string;
@@ -15,13 +15,12 @@ export interface ITraining extends Document {
 }
 
 const TrainingSchema = new mongoose.Schema({
-    trainingId: { type: String, required: true, unique: true },
+    trainingId: { type: String, required: true, unique: true }, // Add this
     name: { type: String, required: true },
     description: String,
     mandatory: { type: Boolean, default: false },
     department: [String],
     deadline: Date,
-    blockchainVerified: { type: Boolean, default: false },
     materials: [
         {
             title: String,
