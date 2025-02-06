@@ -1,5 +1,8 @@
 import { ethers } from "ethers";
 import type { EmployeeManagement } from "../../typechain-types";
+import dotenv from "dotenv";
+dotenv.config();
+
 export interface BlockchainEvent {
     type:
         | "EmployeeRegistered"
@@ -15,28 +18,72 @@ export interface BlockchainEvent {
 }
 
 export class ContractService {
-    private contract: ethers.Contract & EmployeeManagement;
-    private provider: ethers.JsonRpcProvider;
-    private signer: ethers.Wallet;
+    private contract!: ethers.Contract & EmployeeManagement;
+    private provider!: ethers.WebSocketProvider;
+    private signer!: ethers.Wallet;
+    private eventNames = [
+        "EmployeeRegistered",
+        "TrainingCompleted",
+        "MilestoneAchieved",
+        "TrainingCreated",
+    ];
+    private reconnectAttempts = 0;
+    private maxReconnectAttempts = 5;
+    private wsUrl: string;
 
     constructor() {
-        if (!process.env.MANTA_RPC_URL) throw new Error("Missing RPC URL");
+        if (!process.env.WS_URL) throw new Error("Missing WebSocket URL");
         if (!process.env.PRIVATE_KEY) throw new Error("Missing private key");
         if (!process.env.CONTRACT_ADDRESS)
             throw new Error("Missing contract address");
 
-        this.provider = new ethers.JsonRpcProvider(process.env.MANTA_RPC_URL);
-        this.signer = new ethers.Wallet(process.env.PRIVATE_KEY, this.provider);
+        this.wsUrl = process.env.WS_URL;
+        this.initializeProvider();
+    }
 
-        const {
-            abi,
-        } = require("../../artifacts/contracts/EmployeeManagement.sol/EmployeeManagement.json");
+    private async initializeProvider() {
+        try {
+            this.provider = new ethers.WebSocketProvider(this.wsUrl);
+            this.signer = new ethers.Wallet(
+                process.env.PRIVATE_KEY!,
+                this.provider
+            );
 
-        this.contract = new ethers.Contract(
-            process.env.CONTRACT_ADDRESS,
-            abi,
-            this.signer
-        ) as ethers.Contract & EmployeeManagement;
+            const {
+                abi,
+            } = require("../../artifacts/contracts/EmployeeManagement.sol/EmployeeManagement.json");
+            this.contract = new ethers.Contract(
+                process.env.CONTRACT_ADDRESS!,
+                abi,
+                this.signer
+            ) as ethers.Contract & EmployeeManagement;
+
+            const ws = (this.provider as any).websocket;
+            if (ws) {
+                ws.on("close", async () => {
+                    console.log(
+                        "WebSocket connection closed. Attempting to reconnect..."
+                    );
+                    await this.reconnect();
+                });
+            }
+        } catch (error) {
+            console.error("Provider initialization failed:", error);
+            await this.reconnect();
+        }
+    }
+
+    private async reconnect() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.error("Max reconnection attempts reached");
+            return;
+        }
+
+        this.reconnectAttempts++;
+        await new Promise((resolve) =>
+            setTimeout(resolve, 1000 * this.reconnectAttempts)
+        );
+        await this.initializeProvider();
     }
 
     public getContract() {
@@ -76,27 +123,35 @@ export class ContractService {
     }
 
     async setupEventListeners(callback: (event: BlockchainEvent) => void) {
-        this.contract.on("EmployeeRegistered", (wallet, profileHash, event) => {
-            callback({
-                type: "EmployeeRegistered",
-                wallet,
-                profileHash,
-                event,
-            });
-        });
+        this.removeEventListeners();
 
-        this.contract.on("TrainingCompleted", (employee, trainingId, event) => {
-            callback({
-                type: "TrainingCompleted",
-                employee,
-                trainingId,
-                event,
-            });
-        });
+        this.contract.on(
+            "EmployeeRegistered",
+            (wallet: string, profileHash: string, event: any) => {
+                callback({
+                    type: "EmployeeRegistered",
+                    wallet,
+                    profileHash,
+                    event,
+                });
+            }
+        );
+
+        this.contract.on(
+            "TrainingCompleted",
+            (employee: string, trainingId: string, event: any) => {
+                callback({
+                    type: "TrainingCompleted",
+                    employee,
+                    trainingId,
+                    event,
+                });
+            }
+        );
 
         this.contract.on(
             "MilestoneAchieved",
-            (employee, milestoneId, event) => {
+            (employee: string, milestoneId: bigint, event: any) => {
                 callback({
                     type: "MilestoneAchieved",
                     employee,
@@ -108,9 +163,30 @@ export class ContractService {
 
         this.contract.on(
             "TrainingCreated",
-            (id, name, deadline, mandatory, event) => {
-                callback({ type: "TrainingCreated", trainingId: id, event });
+            (
+                id: string,
+                name: string,
+                deadline: number,
+                mandatory: boolean,
+                event: any
+            ) => {
+                callback({
+                    type: "TrainingCreated",
+                    trainingId: id,
+                    event,
+                });
             }
         );
+    }
+
+    public removeEventListeners() {
+        this.eventNames.forEach((eventName) => {
+            this.contract.removeAllListeners(eventName);
+        });
+    }
+
+    public cleanup() {
+        this.removeEventListeners();
+        this.provider.destroy();
     }
 }
