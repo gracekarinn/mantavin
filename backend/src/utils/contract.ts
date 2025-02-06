@@ -1,9 +1,11 @@
 import { ethers } from "ethers";
-import { EmployeeManagement } from "../../typechain-types/EmployeeManagement";
-import EmployeeManagementABI from "../../artifacts/contracts/EmployeeManagement.sol/EmployeeManagement.json";
-
+import type { EmployeeManagement } from "../../typechain-types";
 export interface BlockchainEvent {
-    type: "EmployeeRegistered" | "TrainingCompleted" | "MilestoneAchieved";
+    type:
+        | "EmployeeRegistered"
+        | "TrainingCompleted"
+        | "MilestoneAchieved"
+        | "TrainingCreated";
     wallet?: string;
     employee?: string;
     profileHash?: string;
@@ -37,8 +39,28 @@ export class ContractService {
         ) as ethers.Contract & EmployeeManagement;
     }
 
+    public getContract() {
+        return this.contract;
+    }
+
     async registerEmployee(wallet: string, profileHash: string) {
         const tx = await this.contract.registerEmployee(wallet, profileHash);
+        return await tx.wait();
+    }
+
+    async createTraining(
+        id: string,
+        name: string,
+        deadline: number,
+        mandatory: boolean
+    ) {
+        const trainingId = ethers.id(id);
+        const tx = await this.contract.createTraining(
+            trainingId,
+            name,
+            deadline,
+            mandatory
+        );
         return await tx.wait();
     }
 
@@ -81,6 +103,13 @@ export class ContractService {
                     milestoneId,
                     event,
                 });
+            }
+        );
+
+        this.contract.on(
+            "TrainingCreated",
+            (id, name, deadline, mandatory, event) => {
+                callback({ type: "TrainingCreated", trainingId: id, event });
             }
         );
     }
