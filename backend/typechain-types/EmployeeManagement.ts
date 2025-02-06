@@ -28,6 +28,7 @@ export interface EmployeeManagementInterface extends Interface {
     nameOrSignature:
       | "addMilestone"
       | "completeTraining"
+      | "createTraining"
       | "employees"
       | "milestones"
       | "registerEmployee"
@@ -39,6 +40,7 @@ export interface EmployeeManagementInterface extends Interface {
       | "EmployeeRegistered"
       | "MilestoneAchieved"
       | "TrainingCompleted"
+      | "TrainingCreated"
   ): EventFragment;
 
   encodeFunctionData(
@@ -48,6 +50,10 @@ export interface EmployeeManagementInterface extends Interface {
   encodeFunctionData(
     functionFragment: "completeTraining",
     values: [BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "createTraining",
+    values: [BytesLike, string, BigNumberish, boolean]
   ): string;
   encodeFunctionData(
     functionFragment: "employees",
@@ -72,6 +78,10 @@ export interface EmployeeManagementInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "completeTraining",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "createTraining",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "employees", data: BytesLike): Result;
@@ -115,6 +125,31 @@ export namespace TrainingCompletedEvent {
   export interface OutputObject {
     employee: string;
     trainingId: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace TrainingCreatedEvent {
+  export type InputTuple = [
+    id: BytesLike,
+    name: string,
+    deadline: BigNumberish,
+    mandatory: boolean
+  ];
+  export type OutputTuple = [
+    id: string,
+    name: string,
+    deadline: bigint,
+    mandatory: boolean
+  ];
+  export interface OutputObject {
+    id: string;
+    name: string;
+    deadline: bigint;
+    mandatory: boolean;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -177,6 +212,17 @@ export interface EmployeeManagement extends BaseContract {
     "nonpayable"
   >;
 
+  createTraining: TypedContractMethod<
+    [
+      _id: BytesLike,
+      _name: string,
+      _deadline: BigNumberish,
+      _mandatory: boolean
+    ],
+    [void],
+    "nonpayable"
+  >;
+
   employees: TypedContractMethod<
     [arg0: AddressLike],
     [
@@ -232,6 +278,18 @@ export interface EmployeeManagement extends BaseContract {
   getFunction(
     nameOrSignature: "completeTraining"
   ): TypedContractMethod<[_trainingId: BytesLike], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "createTraining"
+  ): TypedContractMethod<
+    [
+      _id: BytesLike,
+      _name: string,
+      _deadline: BigNumberish,
+      _mandatory: boolean
+    ],
+    [void],
+    "nonpayable"
+  >;
   getFunction(
     nameOrSignature: "employees"
   ): TypedContractMethod<
@@ -303,6 +361,13 @@ export interface EmployeeManagement extends BaseContract {
     TrainingCompletedEvent.OutputTuple,
     TrainingCompletedEvent.OutputObject
   >;
+  getEvent(
+    key: "TrainingCreated"
+  ): TypedContractEvent<
+    TrainingCreatedEvent.InputTuple,
+    TrainingCreatedEvent.OutputTuple,
+    TrainingCreatedEvent.OutputObject
+  >;
 
   filters: {
     "EmployeeRegistered(address,string)": TypedContractEvent<
@@ -336,6 +401,17 @@ export interface EmployeeManagement extends BaseContract {
       TrainingCompletedEvent.InputTuple,
       TrainingCompletedEvent.OutputTuple,
       TrainingCompletedEvent.OutputObject
+    >;
+
+    "TrainingCreated(bytes32,string,uint256,bool)": TypedContractEvent<
+      TrainingCreatedEvent.InputTuple,
+      TrainingCreatedEvent.OutputTuple,
+      TrainingCreatedEvent.OutputObject
+    >;
+    TrainingCreated: TypedContractEvent<
+      TrainingCreatedEvent.InputTuple,
+      TrainingCreatedEvent.OutputTuple,
+      TrainingCreatedEvent.OutputObject
     >;
   };
 }
