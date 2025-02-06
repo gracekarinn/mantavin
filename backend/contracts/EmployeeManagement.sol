@@ -40,33 +40,27 @@ contract EmployeeManagement {
 
     function registerEmployee(address _wallet, string memory _profileHash) external {
         require(!employees[_wallet].isActive, "Employee already exists");
-
         Employee storage newEmployee = employees[_wallet];
         newEmployee.wallet = _wallet;
         newEmployee.profileHash = _profileHash;
         newEmployee.joinDate = block.timestamp;
         newEmployee.isActive = true;
-
         emit EmployeeRegistered(_wallet, _profileHash);
     }
 
     function completeTraining(bytes32 _trainingId) external onlyEmployee {
         require(!employees[msg.sender].completedTrainings[_trainingId], "Training already completed");
-
         employees[msg.sender].completedTrainings[_trainingId] = true;
         emit TrainingCompleted(msg.sender, _trainingId);
     }
 
     function addMilestone(string memory _description) external onlyEmployee returns (uint256) {
         uint256 milestoneId = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender)));
-
         Milestone storage newMilestone = milestones[milestoneId];
         newMilestone.id = milestoneId;
         newMilestone.description = _description;
         newMilestone.timestamp = block.timestamp;
-
         employees[msg.sender].milestones.push(milestoneId);
-
         emit MilestoneAchieved(msg.sender, milestoneId);
         return milestoneId;
     }
