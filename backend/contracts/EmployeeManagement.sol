@@ -32,6 +32,7 @@ contract EmployeeManagement {
     event EmployeeRegistered(address indexed wallet, string profileHash);
     event TrainingCompleted(address indexed employee, bytes32 trainingId);
     event MilestoneAchieved(address indexed employee, uint256 milestoneId);
+    event TrainingCreated(bytes32 indexed id, string name, uint256 deadline, bool mandatory);
 
     modifier onlyEmployee() {
         require(employees[msg.sender].isActive, "Not an active employee");
@@ -48,8 +49,19 @@ contract EmployeeManagement {
         emit EmployeeRegistered(_wallet, _profileHash);
     }
 
+    function createTraining(bytes32 _id, string memory _name, uint256 _deadline, bool _mandatory) external {
+        require(trainings[_id].id == bytes32(0), "Training already exists");
+        Training storage newTraining = trainings[_id];
+        newTraining.id = _id;
+        newTraining.name = _name;
+        newTraining.deadline = _deadline;
+        newTraining.mandatory = _mandatory;
+        emit TrainingCreated(_id, _name, _deadline, _mandatory);
+    }
+
     function completeTraining(bytes32 _trainingId) external onlyEmployee {
         require(!employees[msg.sender].completedTrainings[_trainingId], "Training already completed");
+        require(trainings[_trainingId].id != bytes32(0), "Training does not exist");
         employees[msg.sender].completedTrainings[_trainingId] = true;
         emit TrainingCompleted(msg.sender, _trainingId);
     }
