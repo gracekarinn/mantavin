@@ -18,7 +18,6 @@ interface Milestone {
 }
 
 export interface IEmployee extends Document {
-    wallet: string;
     name: string;
     email: string;
     department: string;
@@ -31,7 +30,6 @@ export interface IEmployee extends Document {
 }
 
 const EmployeeSchema = new mongoose.Schema({
-    wallet: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     department: { type: String, required: true },
