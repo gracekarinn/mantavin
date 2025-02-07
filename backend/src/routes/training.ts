@@ -103,7 +103,6 @@ router.patch("/:id", async (req: Request<TrainingParams>, res: Response) => {
                 req.body,
                 { new: true, session }
             );
-
             if (!training) {
                 throw new Error("Training not found");
             }
@@ -116,10 +115,8 @@ router.patch("/:id", async (req: Request<TrainingParams>, res: Response) => {
                     training.mandatory
                 );
             }
-
             res.json(training);
         });
-
         await session.endSession();
     } catch (error) {
         res.status(400).json({ error: (error as Error).message });
