@@ -46,7 +46,11 @@ export class ContractService {
 
     private async initializeProvider() {
         try {
+            console.log("Initializing WebSocket provider...");
             this.provider = new ethers.WebSocketProvider(this.wsUrl);
+            this.provider.on("error", (error) => {
+                console.error("WebSocket provider error:", error);
+            });
             this.signer = new ethers.Wallet(
                 process.env.PRIVATE_KEY!,
                 this.provider
@@ -168,6 +172,8 @@ export class ContractService {
         this.contract.on(
             "EmployeeRegistered",
             (profileHash: string, event: any) => {
+                console.log("Raw event received:", event);
+                console.log("Profile hash:", profileHash);
                 callback({ type: "EmployeeRegistered", profileHash, event });
             }
         );
