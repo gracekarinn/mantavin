@@ -65,7 +65,7 @@ export interface EmployeeManagementInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "registerEmployee",
-    values: [AddressLike, string]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "trainings",
@@ -94,10 +94,9 @@ export interface EmployeeManagementInterface extends Interface {
 }
 
 export namespace EmployeeRegisteredEvent {
-  export type InputTuple = [wallet: AddressLike, profileHash: string];
-  export type OutputTuple = [wallet: string, profileHash: string];
+  export type InputTuple = [profileHash: string];
+  export type OutputTuple = [profileHash: string];
   export interface OutputObject {
-    wallet: string;
     profileHash: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
@@ -107,10 +106,9 @@ export namespace EmployeeRegisteredEvent {
 }
 
 export namespace MilestoneAchievedEvent {
-  export type InputTuple = [employee: AddressLike, milestoneId: BigNumberish];
-  export type OutputTuple = [employee: string, milestoneId: bigint];
+  export type InputTuple = [milestoneId: BigNumberish];
+  export type OutputTuple = [milestoneId: bigint];
   export interface OutputObject {
-    employee: string;
     milestoneId: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
@@ -120,10 +118,9 @@ export namespace MilestoneAchievedEvent {
 }
 
 export namespace TrainingCompletedEvent {
-  export type InputTuple = [employee: AddressLike, trainingId: BytesLike];
-  export type OutputTuple = [employee: string, trainingId: string];
+  export type InputTuple = [trainingId: BytesLike];
+  export type OutputTuple = [trainingId: string];
   export interface OutputObject {
-    employee: string;
     trainingId: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
@@ -226,8 +223,7 @@ export interface EmployeeManagement extends BaseContract {
   employees: TypedContractMethod<
     [arg0: AddressLike],
     [
-      [string, string, bigint, boolean] & {
-        wallet: string;
+      [string, bigint, boolean] & {
         profileHash: string;
         joinDate: bigint;
         isActive: boolean;
@@ -250,7 +246,7 @@ export interface EmployeeManagement extends BaseContract {
   >;
 
   registerEmployee: TypedContractMethod<
-    [_wallet: AddressLike, _profileHash: string],
+    [_profileHash: string],
     [void],
     "nonpayable"
   >;
@@ -295,8 +291,7 @@ export interface EmployeeManagement extends BaseContract {
   ): TypedContractMethod<
     [arg0: AddressLike],
     [
-      [string, string, bigint, boolean] & {
-        wallet: string;
+      [string, bigint, boolean] & {
         profileHash: string;
         joinDate: bigint;
         isActive: boolean;
@@ -320,11 +315,7 @@ export interface EmployeeManagement extends BaseContract {
   >;
   getFunction(
     nameOrSignature: "registerEmployee"
-  ): TypedContractMethod<
-    [_wallet: AddressLike, _profileHash: string],
-    [void],
-    "nonpayable"
-  >;
+  ): TypedContractMethod<[_profileHash: string], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "trainings"
   ): TypedContractMethod<
@@ -370,7 +361,7 @@ export interface EmployeeManagement extends BaseContract {
   >;
 
   filters: {
-    "EmployeeRegistered(address,string)": TypedContractEvent<
+    "EmployeeRegistered(string)": TypedContractEvent<
       EmployeeRegisteredEvent.InputTuple,
       EmployeeRegisteredEvent.OutputTuple,
       EmployeeRegisteredEvent.OutputObject
@@ -381,7 +372,7 @@ export interface EmployeeManagement extends BaseContract {
       EmployeeRegisteredEvent.OutputObject
     >;
 
-    "MilestoneAchieved(address,uint256)": TypedContractEvent<
+    "MilestoneAchieved(uint256)": TypedContractEvent<
       MilestoneAchievedEvent.InputTuple,
       MilestoneAchievedEvent.OutputTuple,
       MilestoneAchievedEvent.OutputObject
@@ -392,7 +383,7 @@ export interface EmployeeManagement extends BaseContract {
       MilestoneAchievedEvent.OutputObject
     >;
 
-    "TrainingCompleted(address,bytes32)": TypedContractEvent<
+    "TrainingCompleted(bytes32)": TypedContractEvent<
       TrainingCompletedEvent.InputTuple,
       TrainingCompletedEvent.OutputTuple,
       TrainingCompletedEvent.OutputObject
