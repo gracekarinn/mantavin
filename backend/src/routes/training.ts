@@ -31,16 +31,24 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     }
 });
 
-router.get("/", async (_req: Request, res: Response): Promise<void> => {
-    try {
-        const trainings = await Training.find();
-        res.json(trainings);
-        return;
-    } catch (error) {
-        res.status(500).json({ error: (error as Error).message });
-        return;
+router.get(
+    "/:id",
+    async (req: Request<TrainingParams>, res: Response): Promise<void> => {
+        try {
+            const training = await Training.findById(req.params.id);
+            if (!training) {
+                res.status(404).json({ error: "Training not found" });
+                return;
+            }
+
+            res.json(training);
+            return;
+        } catch (error) {
+            res.status(500).json({ error: (error as Error).message });
+            return;
+        }
     }
-});
+);
 
 router.get(
     "/department/:dept",
