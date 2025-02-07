@@ -1,81 +1,187 @@
-import express from "express";
-import { ethers } from "ethers";
+import express, { RequestHandler } from "express";
+import {
+    ethers,
+    ContractTransactionResponse,
+    ContractTransactionReceipt,
+} from "ethers";
 import { Employee } from "../models/employee";
 import { Training } from "../models/training";
-import { ContractService } from "../utils/contract";
+import { ContractService, BlockchainEvent } from "../utils/contract";
 
 const router = express.Router();
 const contractService = new ContractService();
 
-contractService.setupEventListeners(async (event) => {
-    switch (event.type) {
-        case "EmployeeRegistered":
-            await Employee.findOneAndUpdate(
-                { wallet: event.wallet },
-                { $set: { blockchainVerified: true } }
-            );
-            break;
-        case "TrainingCompleted":
-            await Employee.findOneAndUpdate(
-                {
-                    wallet: event.employee,
-                    "trainings.trainingId": event.trainingId,
-                },
-                {
-                    $set: {
-                        "trainings.$.blockchainVerified": true,
-                        "trainings.$.status": "completed",
-                        "trainings.$.completionDate": new Date(),
-                    },
-                }
-            );
-            break;
-    }
-});
+interface CreateEmployeeRequest {
+    name: string;
+    email: string;
+    department: string;
+    role: string;
+}
 
-router.post("/register", async (req, res) => {
+interface AddMilestoneRequest {
+    description: string;
+}
+
+interface TransactionResult {
+    hash: string;
+    blockNumber: number;
+}
+
+function getTxHash(
+    tx: ContractTransactionResponse | ContractTransactionReceipt
+) {
+    return "hash" in tx && typeof tx.hash === "string" ? tx.hash : undefined;
+}
+
+async function getTransactionResult(
+    tx: ContractTransactionResponse | ContractTransactionReceipt
+): Promise<TransactionResult> {
+    let receipt: ContractTransactionReceipt | null = null;
+    if ("wait" in tx && typeof tx.wait === "function") {
+        receipt = await tx.wait();
+    } else {
+        receipt = tx as ContractTransactionReceipt | null;
+    }
+    if (!receipt) throw new Error("Transaction failed");
+    return {
+        hash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+    };
+}
+
+contractService.setupEventListeners(async (event: BlockchainEvent) => {
     try {
-        const employee = new Employee(req.body);
-        const saved = await employee.save();
-
-        const profileHash = ethers.id(
-            JSON.stringify({
-                name: req.body.name,
-                email: req.body.email,
-                department: req.body.department,
-            })
-        );
-
-        await contractService.registerEmployee(req.body.wallet, profileHash);
-        res.status(201).json(saved);
+        switch (event.type) {
+            case "EmployeeRegistered":
+                if (event.profileHash) {
+                    await Employee.findOneAndUpdate(
+                        { profileHash: event.profileHash },
+                        { blockchainVerified: true }
+                    );
+                    console.log(
+                        `Employee registration verified: ${event.profileHash}`
+                    );
+                }
+                break;
+            case "TrainingCompleted":
+                if (event.trainingId) {
+                    const employee = await Employee.findOne({
+                        "trainings.trainingId": event.trainingId,
+                    });
+                    if (employee) {
+                        await Employee.updateOne(
+                            {
+                                _id: employee._id,
+                                "trainings.trainingId": event.trainingId,
+                            },
+                            { $set: { "trainings.$.blockchainVerified": true } }
+                        );
+                    }
+                    console.log(
+                        `Training completion verified: ${event.trainingId}`
+                    );
+                }
+                break;
+            case "MilestoneAchieved":
+                if (event.milestoneId !== undefined) {
+                    await Employee.updateOne(
+                        { "milestones.id": event.milestoneId.toString() },
+                        { $set: { "milestones.$.blockchainVerified": true } }
+                    );
+                    console.log(
+                        `Milestone achievement verified: ${event.milestoneId}`
+                    );
+                }
+                break;
+        }
     } catch (error) {
-        res.status(400).json({ error: (error as Error).message });
+        console.error("Error processing blockchain event:", error);
     }
 });
 
-router.get("/:wallet", (req, res) => {
-    Employee.findOne({ wallet: req.params.wallet })
-        .then((employee) => {
-            if (!employee)
-                return res.status(404).json({ error: "Employee not found" });
-            res.json(employee);
-        })
-        .catch((error) => res.status(500).json({ error: error.message }));
-});
+const createEmployee: RequestHandler = async (req, res) => {
+    let tx: ContractTransactionResponse | ContractTransactionReceipt | null =
+        null;
+    try {
+        const { name, email, department, role } = req.body;
+        if (!name || !email || !department || !role) {
+            res.status(400).json({ error: "Missing required fields" });
+            return;
+        }
+        const existingEmployee = await Employee.findOne({ email });
+        if (existingEmployee) {
+            res.status(400).json({ error: "Email already registered" });
+            return;
+        }
+        const profileData = {
+            name,
+            email,
+            department,
+            role,
+            timestamp: Date.now(),
+        };
+        const profileHash = ethers.id(JSON.stringify(profileData));
+        const employee = new Employee({
+            ...req.body,
+            profileHash,
+            blockchainVerified: false,
+            joinDate: new Date(),
+        });
+        const savedEmployee = await employee.save();
+        try {
+            tx = await contractService.registerEmployee(profileHash);
+            if (!tx) throw new Error("Failed to create blockchain transaction");
+            const result = await getTransactionResult(tx);
+            res.status(201).json({
+                employee: savedEmployee,
+                transaction: result,
+            });
+        } catch (blockchainError) {
+            await Employee.findByIdAndDelete(savedEmployee._id);
+            throw blockchainError;
+        }
+    } catch (error) {
+        res.status(400).json({
+            error: error instanceof Error ? error.message : "Unknown error",
+            transactionHash: tx ? getTxHash(tx) : undefined,
+        });
+    }
+};
 
-router.post("/:wallet/milestone", async (req, res) => {
+const getEmployee: RequestHandler = async (req, res) => {
+    try {
+        const employee = await Employee.findById(req.params.id);
+        if (!employee) {
+            res.status(404).json({ error: "Employee not found" });
+            return;
+        }
+        res.json(employee);
+    } catch (error) {
+        res.status(500).json({
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+};
+
+const addMilestone: RequestHandler = async (req, res) => {
+    let tx: ContractTransactionResponse | ContractTransactionReceipt | null =
+        null;
     try {
         const { description } = req.body;
-        const receipt = await contractService.addMilestone(
-            req.params.wallet,
-            description
-        );
-
-        const employee = await Employee.findOneAndUpdate(
-            { wallet: req.params.wallet },
+        if (!description) {
+            res.status(400).json({ error: "Description is required" });
+            return;
+        }
+        tx = await contractService.addMilestone(description);
+        if (!tx) throw new Error("Failed to create blockchain transaction");
+        const result = await getTransactionResult(tx);
+        const milestoneId = result.hash;
+        const employee = await Employee.findByIdAndUpdate(
+            req.params.id,
             {
                 $push: {
                     milestones: {
+                        id: milestoneId,
                         description,
                         timestamp: new Date(),
                         verified: false,
@@ -85,69 +191,37 @@ router.post("/:wallet/milestone", async (req, res) => {
             },
             { new: true }
         );
-
         if (!employee) throw new Error("Employee not found");
-        res.json(employee);
+        res.json({ employee, transaction: result });
     } catch (error) {
-        res.status(500).json({ error: (error as Error).message });
+        res.status(500).json({
+            error: error instanceof Error ? error.message : "Unknown error",
+            transactionHash: tx ? getTxHash(tx) : undefined,
+        });
     }
-});
+};
 
-router.post("/:wallet/assign-training", (req, res) => {
-    const { trainingId } = req.body;
-    let foundTraining: any = null;
-
-    Training.findOne({ trainingId })
-        .then((training) => {
-            if (!training) {
-                res.status(404).json({ error: "Training not found" });
-                return;
-            }
-            foundTraining = training;
-            return Employee.findOneAndUpdate(
-                { wallet: req.params.wallet },
-                {
-                    $push: {
-                        trainings: {
-                            trainingId: training.trainingId,
-                            name: training.name,
-                            deadline: training.deadline,
-                            status: "pending",
-                            blockchainVerified: false,
-                        },
-                    },
-                },
-                { new: true }
-            );
-        })
-        .then((employee) => {
-            if (!foundTraining) return;
-            if (!employee)
-                return res.status(404).json({ error: "Employee not found" });
-            res.json(employee);
-        })
-        .catch((error) => res.status(500).json({ error: error.message }));
-});
-
-router.patch("/:wallet/complete-training/:trainingId", async (req, res) => {
+const completeTraining: RequestHandler = async (req, res) => {
+    let tx: ContractTransactionResponse | ContractTransactionReceipt | null =
+        null;
     try {
         const training = await Training.findOne({
             trainingId: req.params.trainingId,
         });
-        if (!training) throw new Error("Training not found");
-
-        if (training.deadline && training.deadline < new Date()) {
-            throw new Error("Training deadline has passed");
+        if (!training) {
+            res.status(404).json({ error: "Training not found" });
+            return;
         }
-
-        await contractService.completeTraining(
-            req.params.wallet,
-            req.params.trainingId
-        );
-
+        if (training.deadline && training.deadline < new Date()) {
+            res.status(400).json({ error: "Training deadline has passed" });
+            return;
+        }
+        tx = await contractService.completeTraining(req.params.trainingId);
+        if (!tx) throw new Error("Failed to create blockchain transaction");
+        const result = await getTransactionResult(tx);
         const employee = await Employee.findOneAndUpdate(
             {
-                wallet: req.params.wallet,
+                _id: req.params.id,
                 "trainings.trainingId": req.params.trainingId,
             },
             {
@@ -159,38 +233,57 @@ router.patch("/:wallet/complete-training/:trainingId", async (req, res) => {
             },
             { new: true }
         );
-
         if (!employee) throw new Error("Employee or training not found");
-        res.json(employee);
+        res.json({ employee, transaction: result });
     } catch (error) {
-        res.status(500).json({ error: (error as Error).message });
+        res.status(500).json({
+            error: error instanceof Error ? error.message : "Unknown error",
+            transactionHash: tx ? getTxHash(tx) : undefined,
+        });
     }
-});
+};
 
-router.get("/:wallet/trainings", (req, res) => {
-    Employee.findOne({ wallet: req.params.wallet })
-        .select("trainings")
-        .then((employee) => {
-            if (!employee)
-                return res.status(404).json({ error: "Employee not found" });
-            res.json(employee.trainings);
-        })
-        .catch((error) => res.status(500).json({ error: error.message }));
-});
-
-router.patch("/:wallet/deactivate", async (req, res) => {
+const getEmployeeTrainings: RequestHandler = async (req, res) => {
     try {
-        const employee = await Employee.findOneAndUpdate(
-            { wallet: req.params.wallet },
+        const employee = await Employee.findById(req.params.id).select(
+            "trainings"
+        );
+        if (!employee) {
+            res.status(404).json({ error: "Employee not found" });
+            return;
+        }
+        res.json(employee.trainings);
+    } catch (error) {
+        res.status(500).json({
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+};
+
+const deactivateEmployee: RequestHandler = async (req, res) => {
+    try {
+        const employee = await Employee.findByIdAndUpdate(
+            req.params.id,
             { $set: { isActive: false } },
             { new: true }
         );
-
-        if (!employee) throw new Error("Employee not found");
+        if (!employee) {
+            res.status(404).json({ error: "Employee not found" });
+            return;
+        }
         res.json(employee);
     } catch (error) {
-        res.status(500).json({ error: (error as Error).message });
+        res.status(500).json({
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
     }
-});
+};
+
+router.post("/", createEmployee);
+router.get("/:id", getEmployee);
+router.post("/:id/milestone", addMilestone);
+router.patch("/:id/complete-training/:trainingId", completeTraining);
+router.get("/:id/trainings", getEmployeeTrainings);
+router.patch("/:id/deactivate", deactivateEmployee);
 
 export default router;
