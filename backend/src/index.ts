@@ -21,7 +21,7 @@ mongoose
     .then(() => {
         console.log("MongoDB connected");
     })
-    .catch((error) => console.error("MongoDB connection error:", error));
+    .catch((error: any) => console.error("MongoDB connection error:", error));
 
 app.use("/api/employee", employeeRoutes);
 app.use("/api/training", trainingRoutes);
