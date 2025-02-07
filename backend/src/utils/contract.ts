@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
 import type { EmployeeManagement } from "../../typechain-types";
 import dotenv from "dotenv";
+
 dotenv.config();
 
 export interface BlockchainEvent {
@@ -18,8 +19,8 @@ export interface BlockchainEvent {
 }
 
 export class ContractService {
-    private contract!: ethers.Contract & EmployeeManagement;
     private provider!: ethers.WebSocketProvider;
+    private contract!: ethers.Contract & EmployeeManagement;
     private signer!: ethers.Wallet;
     private eventNames = [
         "EmployeeRegistered",
@@ -58,7 +59,7 @@ export class ContractService {
                 this.signer
             ) as ethers.Contract & EmployeeManagement;
 
-            const ws = (this.provider as any).websocket;
+            const ws = (this.provider as any)._websocket;
             if (ws) {
                 ws.on("close", async () => {
                     console.log(
@@ -78,7 +79,6 @@ export class ContractService {
             console.error("Max reconnection attempts reached");
             return;
         }
-
         this.reconnectAttempts++;
         await new Promise((resolve) =>
             setTimeout(resolve, 1000 * this.reconnectAttempts)
@@ -90,8 +90,8 @@ export class ContractService {
         return this.contract;
     }
 
-    async registerEmployee(wallet: string, profileHash: string) {
-        const tx = await this.contract.registerEmployee(wallet, profileHash);
+    async registerEmployee(profileHash: string) {
+        const tx = await this.contract.registerEmployee(profileHash);
         return await tx.wait();
     }
 
@@ -111,13 +111,13 @@ export class ContractService {
         return await tx.wait();
     }
 
-    async completeTraining(wallet: string, trainingId: string) {
+    async completeTraining(trainingId: string) {
         const encodedId = ethers.id(trainingId);
         const tx = await this.contract.completeTraining(encodedId);
         return await tx.wait();
     }
 
-    async addMilestone(wallet: string, description: string) {
+    async addMilestone(description: string) {
         const tx = await this.contract.addMilestone(description);
         return await tx.wait();
     }
@@ -127,10 +127,9 @@ export class ContractService {
 
         this.contract.on(
             "EmployeeRegistered",
-            (wallet: string, profileHash: string, event: any) => {
+            (profileHash: string, event: any) => {
                 callback({
                     type: "EmployeeRegistered",
-                    wallet,
                     profileHash,
                     event,
                 });
@@ -139,10 +138,9 @@ export class ContractService {
 
         this.contract.on(
             "TrainingCompleted",
-            (employee: string, trainingId: string, event: any) => {
+            (trainingId: string, event: any) => {
                 callback({
                     type: "TrainingCompleted",
-                    employee,
                     trainingId,
                     event,
                 });
@@ -151,10 +149,9 @@ export class ContractService {
 
         this.contract.on(
             "MilestoneAchieved",
-            (employee: string, milestoneId: bigint, event: any) => {
+            (milestoneId: bigint, event: any) => {
                 callback({
                     type: "MilestoneAchieved",
-                    employee,
                     milestoneId,
                     event,
                 });
@@ -187,6 +184,12 @@ export class ContractService {
 
     public cleanup() {
         this.removeEventListeners();
-        this.provider.destroy();
+        if (this.provider && typeof this.provider.destroy === "function") {
+            try {
+                this.provider.destroy();
+            } catch (e) {
+                // Ignore errors during cleanup.
+            }
+        }
     }
 }
