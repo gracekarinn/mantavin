@@ -157,12 +157,11 @@ export class ContractService {
         const maxPriorityFeePerGas = gasPrice.maxPriorityFeePerGas
             ? (gasPrice.maxPriorityFeePerGas * BigInt(12)) / BigInt(10)
             : undefined;
-        const tx = await this.contract.addMilestone(description, {
+        return this.contract.addMilestone(description, {
             maxFeePerGas,
             maxPriorityFeePerGas,
-            gasLimit: 500000,
+            gasLimit: 300000,
         });
-        return await tx.wait();
     }
 
     async setupEventListeners(callback: (event: BlockchainEvent) => void) {
