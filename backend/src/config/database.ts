@@ -13,7 +13,6 @@ async function runMigrations() {
         await Employee.createCollection();
         await Training.createCollection();
 
-        await Employee.collection.createIndex({ wallet: 1 }, { unique: true });
         await Employee.collection.createIndex({ email: 1 }, { unique: true });
         await Training.collection.createIndex(
             { trainingId: 1 },
