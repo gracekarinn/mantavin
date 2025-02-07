@@ -178,24 +178,22 @@ const getEmployee: RequestHandler = async (req, res) => {
 };
 
 const addMilestone: RequestHandler = async (req, res) => {
-    let tx: ContractTransactionResponse | ContractTransactionReceipt | null =
-        null;
     try {
         const { description } = req.body;
         if (!description) {
             res.status(400).json({ error: "Description is required" });
             return;
         }
-        tx = await contractService.addMilestone(description);
+
+        const tx = await contractService.addMilestone(description);
         if (!tx) throw new Error("Failed to create blockchain transaction");
-        const result = await getTransactionResult(tx);
-        const milestoneId = result.hash;
+
         const employee = await Employee.findByIdAndUpdate(
             req.params.id,
             {
                 $push: {
                     milestones: {
-                        id: milestoneId,
+                        id: tx.hash,
                         description,
                         timestamp: new Date(),
                         verified: false,
@@ -205,12 +203,21 @@ const addMilestone: RequestHandler = async (req, res) => {
             },
             { new: true }
         );
-        if (!employee) throw new Error("Employee not found");
-        res.json({ employee, transaction: result });
+
+        if (!employee) {
+            res.status(404).json({ error: "Employee not found" });
+            return;
+        }
+
+        res.json({
+            employee,
+            transaction: {
+                hash: tx.hash,
+            },
+        });
     } catch (error) {
         res.status(500).json({
             error: error instanceof Error ? error.message : "Unknown error",
-            transactionHash: tx ? getTxHash(tx) : undefined,
         });
     }
 };
