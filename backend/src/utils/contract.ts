@@ -122,14 +122,13 @@ export class ContractService {
         const maxPriorityFeePerGas = gasPrice.maxPriorityFeePerGas
             ? (gasPrice.maxPriorityFeePerGas * BigInt(12)) / BigInt(10)
             : undefined;
-        const tx = await this.contract.createTraining(
+        return this.contract.createTraining(
             trainingId,
             name,
             deadline,
             mandatory,
-            { maxFeePerGas, maxPriorityFeePerGas, gasLimit: 500000 }
+            { maxFeePerGas, maxPriorityFeePerGas, gasLimit: 300000 }
         );
-        return await tx.wait();
     }
 
     async completeTraining(trainingId: string) {
