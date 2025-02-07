@@ -3,6 +3,7 @@ import {
     ethers,
     ContractTransactionResponse,
     ContractTransactionReceipt,
+    type TransactionResponse,
 } from "ethers";
 import { Employee } from "../models/employee";
 import { Training } from "../models/training";
@@ -17,7 +18,6 @@ interface CreateEmployeeRequest {
     department: string;
     role: string;
 }
-
 interface AddMilestoneRequest {
     description: string;
 }
@@ -99,20 +99,24 @@ contractService.setupEventListeners(async (event: BlockchainEvent) => {
     }
 });
 
-const createEmployee: RequestHandler = async (req, res) => {
-    let tx: ContractTransactionResponse | ContractTransactionReceipt | null =
-        null;
+const createEmployee: RequestHandler = async (req, res): Promise<void> => {
+    let transactionHash: string | undefined = undefined;
+
     try {
-        const { name, email, department, role } = req.body;
+        const { name, email, department, role } =
+            req.body as CreateEmployeeRequest;
+
         if (!name || !email || !department || !role) {
             res.status(400).json({ error: "Missing required fields" });
             return;
         }
+
         const existingEmployee = await Employee.findOne({ email });
         if (existingEmployee) {
             res.status(400).json({ error: "Email already registered" });
             return;
         }
+
         const profileData = {
             name,
             email,
@@ -121,20 +125,30 @@ const createEmployee: RequestHandler = async (req, res) => {
             timestamp: Date.now(),
         };
         const profileHash = ethers.id(JSON.stringify(profileData));
+
         const employee = new Employee({
             ...req.body,
             profileHash,
             blockchainVerified: false,
             joinDate: new Date(),
         });
+
         const savedEmployee = await employee.save();
+
         try {
-            tx = await contractService.registerEmployee(profileHash);
-            if (!tx) throw new Error("Failed to create blockchain transaction");
-            const result = await getTransactionResult(tx);
+            const transaction = await contractService.registerEmployee(
+                profileHash
+            );
+
+            if (transaction && "hash" in transaction) {
+                transactionHash = transaction.hash.toString();
+            } else {
+                throw new Error("Failed to create blockchain transaction");
+            }
+
             res.status(201).json({
                 employee: savedEmployee,
-                transaction: result,
+                transaction: { hash: transactionHash },
             });
         } catch (blockchainError) {
             await Employee.findByIdAndDelete(savedEmployee._id);
@@ -143,7 +157,7 @@ const createEmployee: RequestHandler = async (req, res) => {
     } catch (error) {
         res.status(400).json({
             error: error instanceof Error ? error.message : "Unknown error",
-            transactionHash: tx ? getTxHash(tx) : undefined,
+            transactionHash,
         });
     }
 };
