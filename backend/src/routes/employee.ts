@@ -53,14 +53,17 @@ contractService.setupEventListeners(async (event: BlockchainEvent) => {
     try {
         switch (event.type) {
             case "EmployeeRegistered":
+                console.log("Processing EmployeeRegistered event");
                 if (event.profileHash) {
-                    await Employee.findOneAndUpdate(
+                    console.log(
+                        "Updating employee with hash:",
+                        event.profileHash
+                    );
+                    const result = await Employee.findOneAndUpdate(
                         { profileHash: event.profileHash },
                         { blockchainVerified: true }
                     );
-                    console.log(
-                        `Employee registration verified: ${event.profileHash}`
-                    );
+                    console.log("Update result:", result);
                 }
                 break;
             case "TrainingCompleted":
@@ -125,11 +128,12 @@ const createEmployee: RequestHandler = async (req, res): Promise<void> => {
             timestamp: Date.now(),
         };
         const profileHash = ethers.id(JSON.stringify(profileData));
+        console.log("Generated profileHash:", profileHash);
 
         const employee = new Employee({
             ...req.body,
             profileHash,
-            blockchainVerified: false,
+            blockchainVerified: true,
             joinDate: new Date(),
         });
 
