@@ -65,10 +65,30 @@ export class ContractService {
             ) as ethers.Contract & EmployeeManagement;
             const ws = (this.provider as any)._websocket;
             if (ws) {
+                console.log("WebSocket state:", ws.readyState);
+
+                ws.on("open", () => {
+                    console.log("WebSocket connection opened");
+                });
+
                 ws.on("close", async () => {
+                    console.log("WebSocket connection closed");
                     await this.reconnect();
                 });
+
+                ws.on("error", (error: any) => {
+                    console.error("WebSocket error:", error);
+                });
             }
+
+            const network = await this.provider.getNetwork();
+            console.log("Connected to network:", {
+                name: network.name,
+                chainId: network.chainId,
+            });
+
+            const contractAddress = await this.contract.getAddress();
+            console.log("Contract connected at:", contractAddress);
         } catch (error) {
             await this.reconnect();
         }
@@ -88,28 +108,71 @@ export class ContractService {
     }
 
     async registerEmployee(profileHash: string): Promise<TransactionResponse> {
+        console.log("Getting fee data...");
         const gasPrice = await this.provider.getFeeData();
+
         const maxFeePerGas = gasPrice.maxFeePerGas
-            ? (gasPrice.maxFeePerGas * BigInt(12)) / BigInt(10)
+            ? (gasPrice.maxFeePerGas * BigInt(15)) / BigInt(10)
             : undefined;
         const maxPriorityFeePerGas = gasPrice.maxPriorityFeePerGas
-            ? (gasPrice.maxPriorityFeePerGas * BigInt(12)) / BigInt(10)
+            ? (gasPrice.maxPriorityFeePerGas * BigInt(15)) / BigInt(10)
             : undefined;
 
-        console.log("Sending transaction with gas config:", {
-            maxFeePerGas: maxFeePerGas?.toString(),
-            maxPriorityFeePerGas: maxPriorityFeePerGas?.toString(),
-            gasLimit: "500000",
+        console.log("Current network status:", {
+            baseFee: gasPrice.gasPrice?.toString(),
+            proposedMaxFee: maxFeePerGas?.toString(),
+            proposedPriorityFee: maxPriorityFeePerGas?.toString(),
         });
+
+        const nonce = await this.signer.getNonce();
+        console.log("Using nonce:", nonce);
 
         const tx = await this.contract.registerEmployee(profileHash, {
             maxFeePerGas,
             maxPriorityFeePerGas,
             gasLimit: 500000,
+            nonce,
         });
 
-        console.log("Transaction sent:", tx.hash);
+        console.log("Transaction details:", {
+            hash: tx.hash,
+            nonce: tx.nonce,
+            maxFeePerGas: tx.maxFeePerGas?.toString(),
+            maxPriorityFeePerGas: tx.maxPriorityFeePerGas?.toString(),
+            gasLimit: tx.gasLimit.toString(),
+        });
+
         return tx;
+    }
+
+    async checkTransactionStatus(txHash: string) {
+        try {
+            const tx = await this.provider.getTransaction(txHash);
+            if (!tx) return { status: "not-found" };
+
+            console.log("Transaction status:", {
+                hash: tx.hash,
+                blockNumber: tx.blockNumber,
+                confirmations: tx.confirmations,
+            });
+
+            if (tx.blockNumber) {
+                const receipt = await this.provider.getTransactionReceipt(
+                    txHash
+                );
+                return {
+                    status: "confirmed",
+                    blockNumber: tx.blockNumber,
+                    confirmations: tx.confirmations,
+                    success: receipt?.status === 1,
+                };
+            }
+
+            return { status: "pending" };
+        } catch (error) {
+            console.error("Error checking transaction status:", error);
+            return { status: "error", error };
+        }
     }
 
     async createTraining(
@@ -168,19 +231,25 @@ export class ContractService {
     }
 
     async setupEventListeners(callback: (event: BlockchainEvent) => void) {
+        console.log("Setting up event listeners...");
         this.removeEventListeners();
+        this.contract.on("*", (event: any) => {
+            console.log("Raw contract event received:", {
+                eventName: event.eventName,
+                args: event.args,
+                transactionHash: event.transactionHash,
+            });
+        });
+
         this.contract.on(
             "EmployeeRegistered",
             (profileHash: string, event: any) => {
-                console.log("Raw event received:", event);
-                console.log("Profile hash:", profileHash);
+                console.log("EmployeeRegistered event received:", {
+                    profileHash,
+                    transactionHash: event.transactionHash,
+                    blockNumber: event.blockNumber,
+                });
                 callback({ type: "EmployeeRegistered", profileHash, event });
-            }
-        );
-        this.contract.on(
-            "TrainingCompleted",
-            (trainingId: string, event: any) => {
-                callback({ type: "TrainingCompleted", trainingId, event });
             }
         );
         this.contract.on(
@@ -200,6 +269,11 @@ export class ContractService {
             ) => {
                 callback({ type: "TrainingCreated", trainingId: id, event });
             }
+        );
+        const listeners = await this.contract.listeners("EmployeeRegistered");
+        console.log(
+            "Number of EmployeeRegistered listeners:",
+            listeners.length
         );
     }
 
