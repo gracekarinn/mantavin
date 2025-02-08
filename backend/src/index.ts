@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
-import { JsonRpcProvider } from "ethers";
+import { JsonRpcProvider, Wallet } from "ethers";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import employeeRoutes from "./routes/employee";
@@ -15,6 +15,10 @@ app.use(cors());
 app.use(express.json());
 
 const provider = new JsonRpcProvider(process.env.RPC_URL);
+
+const wallet = new Wallet(process.env.PRIVATE_KEY as string, provider);
+
+console.log("Wallet address:", wallet.address);
 
 mongoose
     .connect(process.env.MONGODB_URI as string)
@@ -46,6 +50,18 @@ app.get("/api/chain-info", async (_req: Request, res: Response) => {
             blockNumber: Number(blockNumber),
             chainId: Number(network.chainId),
             name: network.name,
+        });
+    } catch (error) {
+        res.status(500).json({ error: (error as Error).message });
+    }
+});
+
+app.get("/api/wallet-info", async (_req: Request, res: Response) => {
+    try {
+        const balance = await provider.getBalance(wallet.address);
+        res.json({
+            address: wallet.address,
+            balance: balance.toString(),
         });
     } catch (error) {
         res.status(500).json({ error: (error as Error).message });
