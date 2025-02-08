@@ -133,7 +133,8 @@ const createEmployee: RequestHandler = async (req, res): Promise<void> => {
         const employee = new Employee({
             ...req.body,
             profileHash,
-            blockchainVerified: true,
+            blockchainVerified: false,
+            blockchainHash: "",
             joinDate: new Date(),
         });
 
@@ -150,8 +151,14 @@ const createEmployee: RequestHandler = async (req, res): Promise<void> => {
                 throw new Error("Failed to create blockchain transaction");
             }
 
+            await Employee.findByIdAndUpdate(savedEmployee._id, {
+                blockchainHash: transactionHash,
+            });
+
+            const updatedEmployee = await Employee.findById(savedEmployee._id);
+
             res.status(201).json({
-                employee: savedEmployee,
+                employee: updatedEmployee,
                 transaction: { hash: transactionHash },
             });
         } catch (blockchainError) {
