@@ -5,6 +5,8 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import employeeRoutes from "./routes/employee";
 import trainingRoutes from "./routes/training";
+import { router as emailRoutes } from "./routes/email";
+import { reminderService } from "./services/reminder";
 
 dotenv.config();
 
@@ -15,20 +17,23 @@ app.use(cors());
 app.use(express.json());
 
 const provider = new JsonRpcProvider(process.env.RPC_URL);
-
 const wallet = new Wallet(process.env.PRIVATE_KEY as string, provider);
-
 console.log("Wallet address:", wallet.address);
 
 mongoose
     .connect(process.env.MONGODB_URI as string)
     .then(() => {
         console.log("MongoDB connected");
+        return reminderService.start();
     })
-    .catch((error: any) => console.error("MongoDB connection error:", error));
+    .then(() => {
+        console.log("Reminder service started");
+    })
+    .catch((error: any) => console.error("Startup error:", error));
 
 app.use("/api/employee", employeeRoutes);
 app.use("/api/training", trainingRoutes);
+app.use("/api/email", emailRoutes);
 
 app.get("/api/test", async (_req: Request, res: Response) => {
     try {
@@ -45,7 +50,6 @@ app.get("/api/chain-info", async (_req: Request, res: Response) => {
             provider.getBlockNumber(),
             provider.getNetwork(),
         ]);
-
         res.json({
             blockNumber: Number(blockNumber),
             chainId: Number(network.chainId),
@@ -68,6 +72,26 @@ app.get("/api/wallet-info", async (_req: Request, res: Response) => {
     }
 });
 
-app.listen(port, () => {
+const shutdown = async () => {
+    console.log("Shutting down bubub");
+
+    reminderService.stop();
+
+    try {
+        await mongoose.connection.close();
+        console.log("MongoDB connection closed");
+    } catch (error) {
+        console.error("Error closing MongoDB connection:", error);
+    }
+
+    process.exit(0);
+};
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+
+const server = app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
+
+export default server;
