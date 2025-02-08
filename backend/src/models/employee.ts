@@ -25,6 +25,7 @@ export interface IEmployee extends Document {
     joinDate?: Date;
     isActive?: boolean;
     blockchainVerified?: boolean;
+    blockchainHash?: string;
     trainings?: Training[];
     milestones?: Milestone[];
 }
@@ -37,6 +38,7 @@ const EmployeeSchema = new mongoose.Schema({
     joinDate: { type: Date, default: Date.now },
     isActive: { type: Boolean, default: true },
     blockchainVerified: { type: Boolean, default: false },
+    blockchainHash: { type: String, default: "" },
     trainings: [
         {
             trainingId: { type: String, required: true },
