@@ -55,13 +55,33 @@ contractService.setupEventListeners(async (event: BlockchainEvent) => {
             case "EmployeeRegistered":
                 console.log("Processing EmployeeRegistered event");
                 if (event.profileHash) {
+                    console.log("Updating employee with hash:", {
+                        type: event.type,
+                        profileHash: event.profileHash,
+                        rawEvent: event.event,
+                    });
+                    const existingEmployee = await Employee.findOne({
+                        profileHash: event.profileHash,
+                    });
                     console.log(
-                        "Updating employee with hash:",
-                        event.profileHash
+                        "Found employee:",
+                        existingEmployee ? existingEmployee._id : "Not found"
                     );
+
+                    if (!existingEmployee) {
+                        const byTxHash = await Employee.findOne({
+                            blockchainHash: event.event.transactionHash,
+                        });
+                        console.log(
+                            "Found by transaction hash:",
+                            byTxHash ? byTxHash._id : "Not found"
+                        );
+                    }
+
                     const result = await Employee.findOneAndUpdate(
                         { profileHash: event.profileHash },
-                        { blockchainVerified: true }
+                        { blockchainVerified: true },
+                        { new: true }
                     );
                     console.log("Update result:", result);
                 }
@@ -144,32 +164,52 @@ const createEmployee: RequestHandler = async (req, res): Promise<void> => {
             const transaction = await contractService.registerEmployee(
                 profileHash
             );
+            console.log("Transaction submitted:", transaction.hash);
 
             if (transaction && "hash" in transaction) {
                 transactionHash = transaction.hash.toString();
+
+                await Employee.findByIdAndUpdate(savedEmployee._id, {
+                    blockchainHash: transactionHash,
+                });
+
+                res.status(201).json({
+                    employee: {
+                        ...savedEmployee.toObject(),
+                        blockchainHash: transactionHash,
+                    },
+                    transaction: {
+                        hash: transactionHash,
+                        status: "pending",
+                    },
+                });
+
+                console.log("Waiting for transaction confirmation...");
+                const receipt = await transaction.wait(1);
+
+                console.log(
+                    "Transaction confirmed in block:",
+                    receipt?.blockNumber
+                );
+
+                await Employee.findByIdAndUpdate(savedEmployee._id, {
+                    blockchainVerified: true,
+                });
+
+                console.log("Employee verification completed in background");
             } else {
                 throw new Error("Failed to create blockchain transaction");
             }
-
-            await Employee.findByIdAndUpdate(savedEmployee._id, {
-                blockchainHash: transactionHash,
-            });
-
-            const updatedEmployee = await Employee.findById(savedEmployee._id);
-
-            res.status(201).json({
-                employee: updatedEmployee,
-                transaction: { hash: transactionHash },
-            });
         } catch (blockchainError) {
-            await Employee.findByIdAndDelete(savedEmployee._id);
-            throw blockchainError;
+            console.error("Blockchain error:", blockchainError);
         }
     } catch (error) {
-        res.status(400).json({
-            error: error instanceof Error ? error.message : "Unknown error",
-            transactionHash,
-        });
+        if (!res.headersSent) {
+            res.status(400).json({
+                error: error instanceof Error ? error.message : "Unknown error",
+                transactionHash,
+            });
+        }
     }
 };
 
