@@ -2,16 +2,17 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { UserPayload } from "../types/auth";
 
-export const authenticateToken = (
+export const authenticateToken = async (
     req: Request,
     res: Response,
     next: NextFunction
-) => {
+): Promise<void> => {
     const authHeader = req.headers.authorization;
     const token = authHeader?.split(" ")[1];
 
     if (!token) {
-        return res.status(401).json({ message: "Access denied" });
+        res.status(401).json({ message: "Access denied" });
+        return;
     }
 
     try {
