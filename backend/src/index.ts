@@ -8,6 +8,7 @@ import trainingRoutes from "./routes/training";
 import { router as emailRoutes } from "./routes/email";
 import { reminderService } from "./services/reminder";
 import authRoutes from "./routes/auth";
+import { authenticateToken } from "./middleware/auth";
 
 dotenv.config();
 
@@ -33,6 +34,19 @@ mongoose
     .catch((error: any) => console.error("Startup error:", error));
 
 app.use("/api/auth", authRoutes);
+
+app.use(
+    [
+        "/api/employee",
+        "/api/training",
+        "/api/email",
+        "/api/test",
+        "/api/chain-info",
+        "/api/wallet-info",
+    ],
+    authenticateToken
+);
+
 app.use("/api/employee", employeeRoutes);
 app.use("/api/training", trainingRoutes);
 app.use("/api/email", emailRoutes);
