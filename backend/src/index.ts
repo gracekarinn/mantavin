@@ -7,6 +7,7 @@ import employeeRoutes from "./routes/employee";
 import trainingRoutes from "./routes/training";
 import { router as emailRoutes } from "./routes/email";
 import { reminderService } from "./services/reminder";
+import authRoutes from "./routes/auth";
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ mongoose
     })
     .catch((error: any) => console.error("Startup error:", error));
 
+app.use("/api/auth", authRoutes);
 app.use("/api/employee", employeeRoutes);
 app.use("/api/training", trainingRoutes);
 app.use("/api/email", emailRoutes);
