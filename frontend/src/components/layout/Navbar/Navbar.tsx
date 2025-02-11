@@ -14,7 +14,7 @@ export const Navbar = () => {
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center">
             <Image
-              src="/logo.png"
+              src="/logo.svg"
               alt="Logo"
               width={25}
               height={32}
