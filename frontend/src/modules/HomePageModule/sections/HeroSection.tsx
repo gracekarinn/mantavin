@@ -3,7 +3,7 @@ import Image from "next/image";
 const HeroSection = () => {
   return (
     <section className="relative flex flex-col items-center justify-center text-center pt-16 pb-0 bg-[#F0FFFA] overflow-hidden">
-      <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+      <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 tracking-wider">
         <Image src="/logo.svg" alt="Mantavin Logo" width={25} height={32} />
         MANTAVIN
       </h2>

@@ -9,7 +9,7 @@ export const Navbar = () => {
   const router = useRouter();
 
   return (
-    <nav className="w-full border-b border-neutral-800 bg-white">
+    <nav className="w-full border-b bg-white">
       <div className="flex justify-between items-center px-[42px]  py-[21px]">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center">
