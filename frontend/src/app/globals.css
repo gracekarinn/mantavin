@@ -2,12 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer base {
   :root {
+    --font-sans: "Plus Jakarta Sans", sans-serif;
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
     --card: 0 0% 100%;
@@ -68,5 +65,6 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
   }
 }
