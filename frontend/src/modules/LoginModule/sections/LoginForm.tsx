@@ -17,9 +17,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { loginSchema, type submitLoginData } from "../constants";
 import { toast } from "sonner";
 import { setCookie } from "cookies-next";
+import { useAuth } from "@/context/auth";
 
 export const LoginForm = () => {
-  const route = useRouter();
+  const router = useRouter();
+  const { setUser, setIsAuthenticated } = useAuth();
+
   const form = useForm<submitLoginData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -29,27 +32,40 @@ export const LoginForm = () => {
   });
 
   const onSubmit = async (data: submitLoginData) => {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    })
-      .then(async (res) => {
-        if (res.ok) {
-          const { accessToken, refreshToken } = await res.json();
-          setCookie("accessToken", accessToken, { maxAge: 60 * 60 * 24 });
-          setCookie("refreshToken", refreshToken, { maxAge: 60 * 60 * 24 });
-          toast.success("Login Success");
-          route.replace("/main");
-        } else {
-          toast.error("Invalid Email or Password dm @mentrikominfo on X");
-        }
-      })
-      .catch((err) => {
-        toast.error(err.message);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
       });
+
+      if (response.ok) {
+        const { token } = await response.json();
+        setCookie("accessToken", token, { maxAge: 60 * 60 * 24 });
+        const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          setUser(userData);
+          setIsAuthenticated(true);
+          toast.success("Login Success");
+          router.replace("/dashboard");
+        } else {
+          toast.error("Failed to get user data");
+        }
+      } else {
+        toast.error("Invalid credentials");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("An error occurred during login");
+    }
   };
 
   return (
