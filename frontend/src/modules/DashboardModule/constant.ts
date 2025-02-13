@@ -1,3 +1,5 @@
+import { Request } from "./interface";
+
 export const proofOfWorkRequests = [
     {
         employeeName: "Suryadi Hasan",
@@ -36,4 +38,15 @@ export const quarterlyData = [
     { name: "Month 1", value: 75 },
     { name: "Month 2", value: 82 },
     { name: "Month 3", value: 88 },
+];
+
+export const incomingRequests: Request[] = [
+    {
+        id: "1",
+        name: "John Doe",
+        email: "john@example.com",
+        role: "Software Engineer",
+        department: "Engineering",
+        reasonOfRequest: "Employment Verification",
+    },
 ];
