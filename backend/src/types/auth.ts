@@ -16,7 +16,22 @@ export interface RegisterBody {
     password: string;
 }
 
+export interface UserPayload {
+    id: string;
+    email: string;
+}
+
+export interface RegisterBody {
+    email: string;
+    password: string;
+}
+
 export interface AuthResponse {
     token?: string;
     message?: string;
+}
+
+export interface UserResponse {
+    id: string;
+    email: string;
 }
