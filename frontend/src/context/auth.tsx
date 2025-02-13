@@ -28,36 +28,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const checkAuth = async () => {
     const token = getCookie("accessToken");
     if (!token) {
-      setIsAuthenticated(false);
-      setUser(null);
-      return;
+        setIsAuthenticated(false);
+        setUser(null);
+        return;
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
 
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-        setIsAuthenticated(true);
-      } else {
-        logout();
-      }
+        if (response.ok) {
+            const userData = await response.json();
+            setUser(userData);
+            setIsAuthenticated(true);
+        } else {
+            console.warn("Token expired or invalid. Logging out...");
+            logout();
+        }
     } catch (error) {
-      console.error('Auth check failed:', error);
-      logout();
+        console.error("Auth check failed:", error);
+        logout();
     }
-  };
+};
+
 
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
     deleteCookie("accessToken");
-    router.push("/login");
+    router.push("/");
   };
 
   useEffect(() => {
