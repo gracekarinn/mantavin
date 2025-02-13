@@ -122,6 +122,33 @@ contractService.setupEventListeners(async (event: BlockchainEvent) => {
     }
 });
 
+const getAllEmployees: RequestHandler = async (req, res) => {
+    try {
+        const employees = await Employee.find({ isActive: true })
+            .select(
+                "name email department role trainings milestones blockchainVerified"
+            )
+            .lean();
+
+        const enrichedEmployees = employees.map((employee) => ({
+            ...employee,
+            id: employee._id.toString(),
+            _id: employee._id.toString(),
+            overdueTrainings: (employee.trainings || []).filter(
+                (t) => t.deadline && new Date(t.deadline) < new Date()
+            ).length,
+            milestones: (employee.milestones || []).length,
+        }));
+
+        res.json(enrichedEmployees);
+    } catch (error) {
+        console.error("Error fetching all employees:", error);
+        res.status(500).json({
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+};
+
 const createEmployee: RequestHandler = async (req, res): Promise<void> => {
     let transactionHash: string | undefined = undefined;
 
@@ -352,6 +379,7 @@ const deactivateEmployee: RequestHandler = async (req, res) => {
 };
 
 router.post("/", createEmployee);
+router.get("/", getAllEmployees);
 router.get("/:id", getEmployee);
 router.post("/:id/milestone", addMilestone);
 router.patch("/:id/complete-training/:trainingId", completeTraining);
