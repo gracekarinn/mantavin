@@ -1,4 +1,5 @@
 import jwt, { Secret, SignOptions, JwtPayload } from "jsonwebtoken";
+import { UserPayload } from "../types/auth";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -8,7 +9,7 @@ export const JWT_CONFIG = {
     expiresIn: 86400,
 };
 
-export const generateToken = (payload: object): string => {
+export const generateToken = (payload: Partial<UserPayload>): string => {
     const options: SignOptions = {
         expiresIn: JWT_CONFIG.expiresIn,
     };
