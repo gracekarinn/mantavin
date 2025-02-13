@@ -27,3 +27,16 @@ export interface EmployeeResponse {
         status: string;
     };
 }
+
+export interface Request {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    department: string;
+    reasonOfRequest: string;
+}
+
+export interface PastRequest extends Request {
+    certificateNumber: string;
+}
