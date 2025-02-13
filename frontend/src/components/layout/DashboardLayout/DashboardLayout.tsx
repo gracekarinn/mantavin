@@ -1,5 +1,4 @@
 "use client";
-import Navbar from "@/components/Navbar/Navbar";
 import Sidebar from "@/components/Sidebar/Sidebar";
 
 export const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
@@ -14,3 +13,5 @@ export const DashboardLayout = ({ children }: { children: React.ReactNode }) => 
     </div>
   );
 };
+
+export default DashboardLayout;
