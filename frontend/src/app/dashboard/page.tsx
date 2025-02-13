@@ -1,11 +1,11 @@
 import React from 'react'
+import { DashboardLayout } from '@/components/layout/DashboardLayout/DashboardLayout'
+import { OverviewPageModule } from '@/modules/DashboardModule'
 
-const page = () => {
+export default function DashboardPage() {
   return (
-    <div>
-
-    </div>
+    <DashboardLayout>
+      <OverviewPageModule />
+    </DashboardLayout>
   )
 }
-
-export default page
