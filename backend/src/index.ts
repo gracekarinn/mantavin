@@ -15,8 +15,19 @@ dotenv.config();
 export const app = express();
 const port = process.env.PORT;
 
-app.use(cors());
+app.use(
+    cors({
+        origin: process.env.FRONTEND_URL || "http://localhost:3000",
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+    })
+);
 app.use(express.json());
+
+app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 const provider = new JsonRpcProvider(process.env.RPC_URL);
 const wallet = new Wallet(process.env.PRIVATE_KEY as string, provider);
