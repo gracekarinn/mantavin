@@ -266,16 +266,19 @@ const addMilestone: RequestHandler = async (req, res) => {
         const tx = await contractService.addMilestone(description);
         if (!tx) throw new Error("Failed to create blockchain transaction");
 
+        const transactionHash = tx.hash;
+
         const employee = await Employee.findByIdAndUpdate(
             req.params.id,
             {
                 $push: {
                     milestones: {
-                        id: tx.hash,
+                        id: transactionHash,
                         description,
                         timestamp: new Date(),
                         verified: false,
                         blockchainVerified: false,
+                        blockNumber: null,
                     },
                 },
             },
@@ -290,13 +293,37 @@ const addMilestone: RequestHandler = async (req, res) => {
         res.json({
             employee,
             transaction: {
-                hash: tx.hash,
+                hash: transactionHash,
+                status: "pending",
             },
         });
+
+        try {
+            const receipt = await tx.wait(1);
+
+            await Employee.findOneAndUpdate(
+                {
+                    _id: req.params.id,
+                    "milestones.id": transactionHash,
+                },
+                {
+                    $set: {
+                        "milestones.$.blockchainVerified": true,
+                        "milestones.$.blockNumber": receipt?.blockNumber,
+                    },
+                }
+            );
+
+            console.log(`Milestone verified in block ${receipt?.blockNumber}`);
+        } catch (confirmError) {
+            console.error("Error confirming transaction:", confirmError);
+        }
     } catch (error) {
-        res.status(500).json({
-            error: error instanceof Error ? error.message : "Unknown error",
-        });
+        if (!res.headersSent) {
+            res.status(500).json({
+                error: error instanceof Error ? error.message : "Unknown error",
+            });
+        }
     }
 };
 
