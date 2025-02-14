@@ -3,6 +3,8 @@ import { ethers } from "ethers";
 import { Training, ITraining } from "../models/training";
 import { ContractService } from "../utils/contract";
 import mongoose from "mongoose";
+import { RequestHandler } from "express";
+import { Employee } from "../models/employee";
 
 interface TrainingParams {
     id?: string;
@@ -12,6 +14,108 @@ interface TrainingParams {
 const router = express.Router();
 const contractService = new ContractService();
 const contract = contractService.getContract();
+
+router.get("/verify", async (req, res): Promise<void> => {
+    try {
+        const { certificate, email } = req.query;
+
+        const certificateStr = certificate as string;
+        const emailStr = email as string;
+
+        if (!certificateStr && !emailStr) {
+            res.status(400).json({
+                error: "Either certificate number or email is required",
+            });
+            return;
+        }
+
+        if (certificateStr) {
+            const training = await Training.findOne({
+                trainingId: certificateStr,
+            });
+            if (training) {
+                const employee = await Employee.findOne({
+                    "trainings.trainingId": certificateStr,
+                });
+
+                if (!employee) {
+                    res.status(404).json({
+                        error: "No employee found for this training",
+                    });
+                    return;
+                }
+
+                const employeeTraining = employee.trainings?.find(
+                    (t) => t.trainingId === certificateStr
+                );
+
+                res.json({
+                    type: "training",
+                    blockNumber: training.blockNumber,
+                    transactionHash: certificateStr,
+                    description: training.description || training.name,
+                    timestamp: employeeTraining?.completionDate,
+                    verified:
+                        training.blockchainVerified ||
+                        employeeTraining?.blockchainVerified ||
+                        false,
+                    employeeName: employee.name,
+                    department: employee.department,
+                    status: employeeTraining?.status || "pending",
+                    mandatory: training.mandatory,
+                    deadline: training.deadline,
+                });
+                return;
+            }
+        }
+
+        let query = emailStr
+            ? { email: emailStr }
+            : { "milestones.id": certificateStr };
+
+        const employee = await Employee.findOne(query);
+
+        if (!employee) {
+            res.status(404).json({
+                error: "No records found",
+            });
+            return;
+        }
+
+        let milestone;
+        if (certificateStr) {
+            milestone = employee.milestones?.find(
+                (m) => m.id === certificateStr
+            );
+        } else {
+            milestone = employee.milestones?.[employee.milestones.length - 1];
+        }
+
+        if (!milestone) {
+            res.status(404).json({
+                error: "No verification record found",
+            });
+            return;
+        }
+
+        res.json({
+            type: "milestone",
+            blockNumber: milestone.blockNumber,
+            transactionHash: milestone.id,
+            description: milestone.description,
+            timestamp: milestone.timestamp,
+            verified: milestone.blockchainVerified,
+            employeeName: employee.name,
+            department: employee.department,
+            verifiedBy: milestone.verifiedBy,
+        });
+    } catch (error) {
+        console.error("Verification error:", error);
+        res.status(500).json({
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+});
 
 router.post("/", async (req: Request, res: Response): Promise<void> => {
     try {
@@ -30,25 +134,6 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
         return;
     }
 });
-
-router.get(
-    "/:id",
-    async (req: Request<TrainingParams>, res: Response): Promise<void> => {
-        try {
-            const training = await Training.findById(req.params.id);
-            if (!training) {
-                res.status(404).json({ error: "Training not found" });
-                return;
-            }
-
-            res.json(training);
-            return;
-        } catch (error) {
-            res.status(500).json({ error: (error as Error).message });
-            return;
-        }
-    }
-);
 
 router.get(
     "/department/:dept",
