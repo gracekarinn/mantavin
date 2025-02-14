@@ -251,7 +251,7 @@ export const EmployeesPageSection = () => {
           </TableHeader>
           <TableBody>
             {employees.map((employee) => (
-              <TableRow key={employee.id} className="hover:bg-gray-50">
+              <TableRow key={employee._id || employee.email} className="hover:bg-gray-50">
                 <TableCell className="font-medium">{employee.name}</TableCell>
                 <TableCell>{employee.email}</TableCell>
                 <TableCell>{employee.role}</TableCell>
