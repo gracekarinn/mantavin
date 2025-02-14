@@ -3,6 +3,8 @@
 ## 🌟 Introduction
 **Manvatin** is a cutting-edge **blockchain-powered HR platform** that transforms the way companies manage employees, training, and proof of work. Built on **Manta Pacific**, Manvatin ensures transparency, security, and integrity in workforce management.
 
+![Certificate Verification](https://github.com/gracekarinn/mantavin/blob/main/Screenshot%202025-02-14%20at%2023.05.17.png)
+
 🔥 **Live Smart Contract**: [Click Here](https://github.com/gracekarinn/mantavin/blob/main/backend/artifacts/contracts/EmployeeManagement.sol/EmployeeManagement.json) to explore our deployed contract.
 
 ---
@@ -13,7 +15,7 @@
 🔍 Instantly check blockchain hashes to verify employment history and training completion. Say goodbye to fake CVs and unverified credentials!
 
 📌 **Example:**
-![Certificate Verification](#)
+![Certificate Verification](https://github.com/gracekarinn/mantavin/blob/main/Screenshot%202025-02-14%20at%2023.06.01.png)
 
 ---
 
@@ -21,7 +23,7 @@
 💼 Securely add employees to the blockchain, ensuring a tamper-proof employment history.
 
 📌 **Example:**
-![Employee Addition](#)
+![Employee Addition](https://github.com/gracekarinn/mantavin/blob/main/Screenshot%202025-02-14%20at%2023.09.12.png)
 
 ---
 
@@ -31,7 +33,7 @@ Get powerful analytics with:
 - **Quarterly (3-month) Performance Overviews** 📊
 
 📌 **Example:**
-![HR Dashboard](#)
+![HR Dashboard](https://github.com/gracekarinn/mantavin/blob/main/Screenshot%202025-02-14%20at%2023.05.44.png)
 
 ---
 
@@ -48,7 +50,7 @@ Get powerful analytics with:
 Employees submit work/milestones, and HR approves them seamlessly with blockchain verification.
 
 📌 **Example:**
-![Proof of Work](#)
+![Proof of Work](https://github.com/gracekarinn/mantavin/blob/main/Screenshot%202025-02-14%20at%2023.06.44.png)
 
 ---
 
