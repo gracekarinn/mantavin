@@ -8,6 +8,8 @@ export interface ITraining extends Document {
     mandatory: boolean;
     department: string[];
     deadline: Date;
+    blockNumber?: number;
+    blockchainVerified?: boolean;
     materials?: Array<{
         title: string;
         url: string;
@@ -21,6 +23,8 @@ const TrainingSchema = new mongoose.Schema({
     mandatory: { type: Boolean, default: false },
     department: [String],
     deadline: Date,
+    blockNumber: { type: Number },
+    blockchainVerified: { type: Boolean, default: false },
     materials: [
         {
             title: String,
