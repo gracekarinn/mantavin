@@ -77,5 +77,5 @@ HR can **bulk add employees** and register them instantly on the blockchain, sim
 
 💡 **Want to contribute?** Fork this project and submit a pull request!
 
-📩 **Questions?** Contact us at [Your Contact Info] 🚀
+📩 **Questions?** Contact me on Instagram @gracekarinn 🚀
 
