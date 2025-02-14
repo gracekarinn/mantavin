@@ -15,6 +15,7 @@ interface Milestone {
     verified?: boolean;
     verifiedBy?: string;
     blockchainVerified?: boolean;
+    blockNumber?: number;
 }
 
 export interface IEmployee extends Document {
@@ -57,6 +58,7 @@ const EmployeeSchema = new mongoose.Schema({
             verified: Boolean,
             verifiedBy: String,
             blockchainVerified: { type: Boolean, default: false },
+            blockNumber: Number,
         },
     ],
 });
