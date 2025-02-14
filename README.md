@@ -42,7 +42,7 @@ Get powerful analytics with:
 - Auto-reminders for employees who haven't completed their courses.
 
 📌 **Example:**
-![Training Management](#)
+![Training Management](https://github.com/gracekarinn/mantavin/blob/main/Desktop%20-%205.png)
 
 ---
 
@@ -58,7 +58,7 @@ Employees submit work/milestones, and HR approves them seamlessly with blockchai
 HR can **bulk add employees** and register them instantly on the blockchain, simplifying hiring processes.
 
 📌 **Example:**
-![Bulk Add](#)
+![Bulk Add](https://github.com/gracekarinn/mantavin/blob/main/Desktop%20-%2013.png)
 
 ---
 
